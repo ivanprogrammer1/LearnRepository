@@ -22,7 +22,7 @@ class DataApi {
     }
 }
 
-fun randomNumber() = (1..20).random()
+fun randomNumber() = (1..5000).random()
 fun randomName() = listOf(
     "Ivan",
     "Kirill",
