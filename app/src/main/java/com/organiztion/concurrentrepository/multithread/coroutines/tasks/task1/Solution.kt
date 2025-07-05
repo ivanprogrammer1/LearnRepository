@@ -1,4 +1,4 @@
-package com.organiztion.concurrentrepository.task1
+package com.organiztion.concurrentrepository.multithread.coroutines.tasks.task1
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -26,7 +26,6 @@ class BrokerHandler(private val broker: Broker) {
     }
 }
 
-@OptIn(FlowPreview::class)
 fun main() {
     val broker1 = BrokerHandler(Broker())
     val broker2 = BrokerHandler(Broker())

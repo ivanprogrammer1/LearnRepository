@@ -1,4 +1,4 @@
-package com.organiztion.concurrentrepository.repository
+package com.organiztion.concurrentrepository.multithread.coroutines.tasks.task2.repository
 
 data class ObjectDto(val id: Int, val name: String, val age: Int)
 

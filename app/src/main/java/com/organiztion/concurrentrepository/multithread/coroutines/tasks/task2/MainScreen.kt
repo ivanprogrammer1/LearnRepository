@@ -1,7 +1,7 @@
-package com.organiztion.concurrentrepository
+package com.organiztion.concurrentrepository.multithread.coroutines.tasks.task2
 
-import com.organiztion.concurrentrepository.repository.DataApi
-import com.organiztion.concurrentrepository.repository.DataRepository
+import com.organiztion.concurrentrepository.multithread.coroutines.tasks.task2.repository.DataApi
+import com.organiztion.concurrentrepository.multithread.coroutines.tasks.task2.repository.DataRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
