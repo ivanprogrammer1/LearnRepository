@@ -3,12 +3,15 @@ package com.organiztion.concurrentrepository.multithread.coroutines
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.suspendCoroutine
 
 /**
@@ -341,7 +344,52 @@ fun Example4_3() {
     }
 }
 
+/**
+ * Пример 5.1 Иногда при завершении scope/job нам необходимо завершить какую-либо операцию
+ * Однако если scope/job отменена, то операция часто не может быть продолжена, из-за чего
+ * возникает проблема.
+ */
+fun Example5_1() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        try {
+            println("Trying work")
+        } catch (exception: Exception) {
+            println("Our exception $exception")
+        } finally {
+            println("Trying finish operation")
+            delay(5000)
+            println("Success finish operation") // Мы не дойдем этого участка
+        }
+    }
+    scope.cancel()
+}
+
+/**
+ * Пример 5.2 Для таких ситуаций мы можем использовать NonCancellable, чья работа продолжается все
+ * время пока не дойдет до момента окончания. Важное уточнение, она может использоваться только
+ * совместно с withContext, любое другое использование может привести к разрыву связей между
+ * родителем-ребенком
+ */
+fun Example5_2() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        try {
+            println("Trying work")
+        } catch (exception: Exception) {
+            println("Our exception $exception")
+        } finally {
+            withContext(NonCancellable) {
+                println("Trying finish operation")
+                delay(5000)
+                println("Success finish operation")
+            }
+        }
+    }
+    scope.cancel()
+}
+
 fun main() {
-    Example3_4()
+    Example5_3()
     while (true);
 }
