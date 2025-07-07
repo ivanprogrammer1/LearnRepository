@@ -390,6 +390,6 @@ fun Example5_2() {
 }
 
 fun main() {
-    Example5_3()
+    Example5_1()
     while (true);
 }
