@@ -7,6 +7,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
 import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -268,7 +269,50 @@ fun Example3_3() {
     }
 }
 
+/**
+ * Пример 4.1
+ * Если нам важно отслеживать успех отправки или получения информации, то мы можем использовать обертку ChannelResult
+ * Он позволяет получить значение, определить, успешно ли оно отправлено, закрыт ли канал и т.д.
+ */
+fun Example4_1() {
+    val scope = CoroutineScope(Job())
+    val channel = Channel<Int>()
+    scope.launch {
+        val resultSend = channel.trySend(10)
+        println("Success send: " + resultSend.isSuccess)
+        println("Channel is close: " + resultSend.isClosed)
+    }
+    channel.close()
+}
+
+/**
+ * Пример 4.2
+ * Если мы не будем пользоваться этими методами то можем поймать ошибку
+ */
+fun Example4_2() {
+    val scope = CoroutineScope(Job())
+    val channel = Channel<Int>()
+    scope.launch {
+        val resultSend = channel.send(10)
+    }
+    channel.close()
+}
+
+/**
+ * Пример 4.3
+ * Также есть блокирующий метод, который под капотом использует runBlocking, но как по мне таким лучше не пользоваться
+ */
+fun Example4_3() {
+    val channel = Channel<Int>()
+    val resultSend = channel.trySendBlocking(run {
+        println("Very long blocking operation")
+        Thread.sleep(5000)
+        5
+    })
+    channel.close()
+}
+
 fun main() {
-    Example3_3()
+    Example4_3()
     while (true);
 }
