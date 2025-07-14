@@ -7,9 +7,12 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
 import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
+import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 
 
 /**
@@ -312,7 +315,201 @@ fun Example4_3() {
     channel.close()
 }
 
+/**
+ * Пример 5.1
+ * При работе с множеством каналов нам может понадобиться выбирать первое приходящее сообщение среди
+ * всех остальных и как либо его обрабатывать. Для работы с подобным механизмом существует API Select
+ * Если результат пришел, то другие каналы будут отменены
+ */
+fun Example5_1() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstProducer = produce<Int> {
+            delay(2000)
+            send(5)
+            println("Code wasn't reach")
+        }
+        val secondProducer = produce<Int> {
+            delay(1000)
+            send(10)
+            println("Success reach")
+        }
+
+        // Здесь мы назначем обработчик, выбирающий итоговое значение
+        val selectedValue = select {
+            // Здесь представлены кэллбэки, сработает только тот который принимаем за результат
+            firstProducer.onReceive {
+                println("First producer on receive $it")
+                it
+            }
+            secondProducer.onReceive {
+                println("Second produce on receive $it")
+                it
+            }
+        }
+
+        println("Current value select $selectedValue")
+    }
+}
+
+/**
+ * Пример 5.2
+ * Не только каналы, но и другие suspend-билдеры умеют работать вместе с Select
+ * @see{<a href="https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.selects/select.html">Подробнее про все типы</a>}
+ * При этом для каналов существует несколько видов обработчиков
+ * onReceive - отвечает за потребление данных, которые были посланы через этот канал
+ * onSend - отвечает за отправление данных через этот канал. Кто первый отправил (и что важно, обработал), тот и молодец
+ */
+fun Example5_2() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstActor = actor<Int> {
+            println("First actor wait")
+            delay(5000)
+            println("Receive for first ${receive()}")
+        }
+        val secondActor = actor<Int> {
+            println("Second actor wait")
+            delay(4000)
+            println("Receive for second ${receive()}")
+        }
+
+        // Аналогично onReceive, мы в select получаем получаем итоговое значение, только еще вместе
+        // с каналом, которому оно было отправлено
+        val selectedValue = select {
+            firstActor.onSend(5) {
+                println("First actor success send $it")
+                it
+            }
+            secondActor.onSend(10) {
+                println("Second actor success send $it")
+                it
+            }
+        }
+
+        println("Current value select $selectedValue")
+    }
+}
+
+/**
+ * Пример 5.3
+ * Однако, может быть ситуация когда при работе со списком каналов один из них закрывается, тогда
+ * наш select также прокинет ошибку
+ */
+fun Example5_3() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstActor = actor<Int> {
+            println("First actor wait")
+            delay(5000)
+            println("Receive for first ${receive()}")
+        }
+        val secondActor = actor<Int> {
+            println("Second actor wait")
+            delay(4000)
+            println("Receive for second ${receive()}")
+        }
+
+        launch {
+            val selectedValue = select {
+                firstActor.onSend(5) {
+                    println("First actor success send $it")
+                    it
+                }
+                secondActor.onSend(10) {
+                    println("Second actor success send $it")
+                    it
+                }
+            }
+
+            println("Current value select $selectedValue")
+        }
+        firstActor.close()
+    }
+}
+
+/**
+ * Пример 5.4
+ * Что интересно, ошибка имеено что прокидывается, а не распространяется как стандартные буилдеры async/launch
+ */
+fun Example5_4() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstActor = actor<Int> {
+            println("First actor wait")
+            delay(5000)
+            println("Receive for first ${receive()}")
+        }
+        val secondActor = actor<Int> {
+            println("Second actor wait")
+            delay(4000)
+            println("Receive for second ${receive()}")
+        }
+
+        launch {
+            try {
+                val selectedValue = select {
+                    firstActor.onSend(5) {
+                        println("First actor success send $it")
+                        it
+                    }
+                    secondActor.onSend(10) {
+                        println("Second actor success send $it")
+                        it
+                    }
+                }
+
+                println("Current value select $selectedValue")
+            } catch (exception: Exception) {
+                println("We catch exception $exception")
+            }
+        }
+        firstActor.close()
+    }
+}
+
+/**
+ * Пример 5.5
+ * Еще один пример работы ошибки, демонстрирует работу не каналов/select, а launch, но показать надо
+ */
+fun Example5_5() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstActor = actor<Int> {
+            println("First actor wait")
+            delay(5000)
+            println("Receive for first ${receive()}")
+        }
+        val secondActor = actor<Int> {
+            println("Second actor wait")
+            delay(4000)
+            println("Receive for second ${receive()}")
+        }
+        try {
+            launch {
+
+                val selectedValue = select {
+                    firstActor.onSend(5) {
+                        println("First actor success send $it")
+                        it
+                    }
+                    secondActor.onSend(10) {
+                        println("Second actor success send $it")
+                        it
+                    }
+                }
+
+                println("Current value select $selectedValue")
+            }
+        } catch (exception: Exception) {
+            println("We never catch exception $exception")
+        }
+
+        firstActor.close()
+    }
+}
+
 fun main() {
-    Example4_3()
+    Example5_5()
     while (true);
 }
