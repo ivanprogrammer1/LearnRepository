@@ -15,6 +15,8 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.selects.whileSelect
+import kotlinx.coroutines.withTimeout
 
 
 /**
@@ -432,6 +434,7 @@ fun Example5_3() {
 
 /**
  * Пример 5.4
+ *
  * Что интересно, ошибка имеено что прокидывается, а не распространяется как стандартные буилдеры async/launch
  */
 fun Example5_4() {
@@ -472,6 +475,7 @@ fun Example5_4() {
 
 /**
  * Пример 5.5
+ *
  * Еще один пример работы ошибки, демонстрирует работу не каналов/select, а launch, но показать надо
  */
 fun Example5_5() {
@@ -512,6 +516,7 @@ fun Example5_5() {
 
 /**
  * Пример 5.6
+ *
  * Пример обработки ошибки для onReceive. Аналогично для onSend можем обработать через try/catch
  */
 fun Example5_6() {
@@ -547,6 +552,7 @@ fun Example5_6() {
 
 /**
  * Пример 6.1
+ *
  * В любом случае для обработки ситуцаии, когда нам необходимо выбрать один приходящий элемент из группы
  * каналов, но при этом один из каналов может закрыться, мы можем вместо onReceive использовать onReceiveCatching
  */
@@ -581,6 +587,7 @@ fun Example6_1() {
 
 /**
  * Пример 7.1
+ *
  * Как уже было сказано, помимо каналов с API Select могут работать и другие части, завязанные на корутины
  * Например, async
  */
@@ -622,6 +629,7 @@ fun Example7_1() {
 
 /**
  * Пример 7.2
+ *
  * Также для async существует отдельный метод onJoin, который относится к группе SelectClause0 (то есть мы не получаем значения, только то что было обработано)
  * В ответ этот метод должен вернуть то значение, которое мы хотим видеть в select
  */
@@ -664,6 +672,7 @@ fun Example7_2() {
 
 /**
  * Пример 7.3
+ *
  * При этом при отмене одной из корутин мы не выкинем ошибку, ведь onJoin просто ожидает
  * пока выполнится действие (не обязательно успешно)
  */
@@ -705,7 +714,129 @@ fun Example7_3() {
     }
 }
 
+/**
+ * Пример 7.4
+ *
+ * Аналогично async onJoin есть и для launch
+ */
+fun Example7_4() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val job = launch {
+            println("Doing work")
+            delay(2000)
+            println("Doing another work")
+        }
+        val value = select {
+            job.onJoin {
+                println("Success join")
+            }
+        }
+    }
+}
+
+/**
+ * Пример 8.1
+ *
+ * Помимо основных api для работы с Select существуют специальные буилдеры, которые содержат под
+ * собой особую логику
+ *
+ * Так, буилдер onTimeout создает предельное время выполнения для select, если по истечению этого времени
+ * ни один из блоков так и не прислал свои данные, то используется результат из onTimeout
+ */
+fun Example8_1() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val deferred1 = async {
+            delay(1500)
+            "Result 1"
+        }
+
+        val deferred2 = async {
+            delay(1200)
+            "Result 2"
+        }
+
+        val result = select<String> {
+            deferred1.onAwait { it }
+            deferred2.onAwait { it }
+            onTimeout(1000) {
+                "Default result"
+            }
+        }
+
+        println("Result $result")
+    }
+}
+
+/**
+ * Пример 8.2
+ *
+ * Также существует билдер whileSelect, он уже принимает группу событий и работает до тех пор, пока
+ * они возвращают true
+ */
+fun Example8_2() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val first = produce {
+            while (true) {
+                delay(500)
+                send(true)
+            }
+        }
+        val second = produce {
+            while (true) {
+                delay(300)
+                send(true)
+            }
+        }
+        whileSelect {
+            first.onReceive {
+                println("Work first")
+                it
+            }
+            second.onReceive {
+                println("Work second")
+                it
+            }
+        }
+    }
+}
+
+/**
+ * Пример 8.3
+ *
+ * При этом для этого билдера важно какой ответ приходит первым (то есть если false, то обработка выключается)
+ */
+fun Example8_3() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val first = produce {
+            while (true) {
+                delay(500)
+                send(true)
+            }
+        }
+        val second = produce {
+            while (true) {
+                delay(300)
+                send(false)
+            }
+        }
+        whileSelect {
+            first.onReceive {
+                println("Work first")
+                it
+            }
+            second.onReceive {
+                println("Work second")
+                it
+            }
+        }
+    }
+}
+
 fun main() {
-    Example7_3()
+    Example8_3()
     while (true);
 }
