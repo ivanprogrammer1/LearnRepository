@@ -1,7 +1,9 @@
 package com.organiztion.concurrentrepository.multithread.flows
 
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
@@ -487,7 +489,6 @@ fun Example5_5() {
         }
         try {
             launch {
-
                 val selectedValue = select {
                     firstActor.onSend(5) {
                         println("First actor success send $it")
@@ -509,7 +510,202 @@ fun Example5_5() {
     }
 }
 
+/**
+ * Пример 5.6
+ * Пример обработки ошибки для onReceive. Аналогично для onSend можем обработать через try/catch
+ */
+fun Example5_6() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstProducer = produce<Int> {
+            delay(2000)
+            println("Code wasn't reach")
+            send(10)
+        }
+        val secondProducer = produce<Int> {
+            delay(2000)
+            send(10)
+        }
+
+        try {
+            repeat(5) {
+                val selectedValue = select {
+                    firstProducer.onReceive {
+                        println("First producer on receive $it")
+                    }
+                    secondProducer.onReceive {
+                        println("Second producer on receive $it")
+                    }
+                }
+            }
+        } catch (exception: Exception) {
+
+        }
+    }
+}
+
+
+/**
+ * Пример 6.1
+ * В любом случае для обработки ситуцаии, когда нам необходимо выбрать один приходящий элемент из группы
+ * каналов, но при этом один из каналов может закрыться, мы можем вместо onReceive использовать onReceiveCatching
+ */
+fun Example6_1() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val firstProducer = produce<Int> {
+            delay(2000)
+            println("Code wasn't reach")
+            send(10)
+        }
+        val secondProducer = produce<Int> {
+            delay(2000)
+            send(10)
+        }
+
+        /*
+        Здесь возможные ошибки возложены на внутренний обработчик onReceive
+         */
+        repeat(5) {
+            val selectedValue = select {
+                firstProducer.onReceiveCatching { result ->
+                    println("First producer on receive ${result.isSuccess}")
+                }
+                secondProducer.onReceiveCatching { result ->
+                    println("Second producer on receive ${result.isSuccess}")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Пример 7.1
+ * Как уже было сказано, помимо каналов с API Select могут работать и другие части, завязанные на корутины
+ * Например, async
+ */
+fun Example7_1() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val jobs = listOf(
+            async {
+                delay((1000L..5000L).random())
+                (1..10).random()
+            },
+            async {
+                delay((1000L..5000L).random())
+                (1..10).random()
+            },
+            async {
+                delay((1000L..5000L).random())
+                (1..10).random()
+            },
+            async {
+                delay((1000L..5000L).random())
+                (1..10).random()
+            },
+            async {
+                delay((1000L..5000L).random())
+                (1..10).random()
+            },
+        )
+
+        val value = select {
+            jobs.forEach { job ->
+                job.onAwait { value ->
+                    println("Success get value $value")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Пример 7.2
+ * Также для async существует отдельный метод onJoin, который относится к группе SelectClause0 (то есть мы не получаем значения, только то что было обработано)
+ * В ответ этот метод должен вернуть то значение, которое мы хотим видеть в select
+ */
+fun Example7_2() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val jobs = listOf(
+            async(CoroutineName("1")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("2")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("3")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("4")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("5")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            }
+        )
+        val value = select {
+            jobs.forEach { job ->
+                job.onJoin {
+                    println("Success was joined")
+                    println("Return value what we want")
+                    true
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Пример 7.3
+ * При этом при отмене одной из корутин мы не выкинем ошибку, ведь onJoin просто ожидает
+ * пока выполнится действие (не обязательно успешно)
+ */
+fun Example7_3() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val jobs = listOf(
+            async(CoroutineName("1")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("2")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("3")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("4")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            },
+            async(CoroutineName("5")) {
+                delay((5000L..10000L).random())
+                (1..10).random()
+            }
+        )
+        jobs.forEach { it.cancel() }
+        val value = select {
+            jobs.forEach { job ->
+                job.onJoin {
+                    println("Success was joined")
+                    println("Return value what we want")
+                    true
+                }
+            }
+        }
+    }
+}
+
 fun main() {
-    Example5_5()
+    Example7_3()
     while (true);
 }
