@@ -26,7 +26,7 @@ import kotlinx.coroutines.withTimeout
  * заблокирует операцию.
  * Здесь второй send выполнится только через 5 секунд
  */
-fun Example1_1() {
+private fun Example1_1() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>()
     scope.launch {
@@ -50,7 +50,7 @@ fun Example1_1() {
  * Второй вид канала это CONFLATED (последнее приходящее значение затирается)
  * Здесь мы получим значение 1 без ожидания
  */
-fun Example1_2() {
+private fun Example1_2() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(CONFLATED)
     scope.launch {
@@ -73,7 +73,7 @@ fun Example1_2() {
  * Мы можем получать бесконечное число сообщений без ожидания, receive будет получать последнее
  * необработанное (как очередь)
  */
-fun Example1_3() {
+private fun Example1_3() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(UNLIMITED)
     scope.launch {
@@ -98,7 +98,7 @@ fun Example1_3() {
  * Четвертый вид канала это BUFFERED (буфер со стандартным размером (определяется JVM и по стандарту 64))
  * Аналогично третьему, только ограничен определенным размером
  */
-fun Example1_4() {
+private fun Example1_4() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(BUFFERED)
     scope.launch {
@@ -125,7 +125,7 @@ fun Example1_4() {
  * В таком случае мы успешно отправили первый и второй запрос (второй хранится в буфере)
  * Третий же будет ожидать
  */
-fun Example1_5() {
+private fun Example1_5() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(1)
     scope.launch {
@@ -156,7 +156,7 @@ fun Example1_5() {
  * Это означает что если в буфере нет свободного места, то мы будем ожидать пока не обработаем его
  * на стороне получателя
  */
-fun Example2_1() {
+private fun Example2_1() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(onBufferOverflow = BufferOverflow.SUSPEND)
     scope.launch {
@@ -171,7 +171,7 @@ fun Example2_1() {
  * Режим DROP_OLDEST
  * Если в буфере не будет хватать места, то мы удалим последний элемент из списка
  */
-fun Example2_2() {
+private fun Example2_2() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(onBufferOverflow = BufferOverflow.DROP_OLDEST)
     scope.launch {
@@ -188,7 +188,7 @@ fun Example2_2() {
  * Режим DROP_LATEST
  * Если в буфере не будет хватать места, то мы удалим первый элемент в очереди
  */
-fun Example2_3() {
+private fun Example2_3() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(onBufferOverflow = BufferOverflow.DROP_LATEST)
     scope.launch {
@@ -208,7 +208,7 @@ fun Example2_3() {
  * Если в буфере не будет хватать места, то мы удалим первый элемент в очереди
  * В нашем примере мы храним буфер из 5 элементов. Так как мы закрываем канал до того как обработали значения, то они передадутся к нам в onUndeliveredElement
  */
-fun Example3_1() {
+private fun Example3_1() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(
         capacity = 5,
@@ -236,7 +236,7 @@ fun Example3_1() {
  * все равно придет к нам
  * Но нужно явно учесть, что это будет работать только если размер нашего буфера больше 0
  */
-fun Example3_2() {
+private fun Example3_2() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(
         capacity = 1,
@@ -259,7 +259,7 @@ fun Example3_2() {
  * Этот пример работать уже не будет (мы не храним никакие элементы в буфере и канал считает
  * что и недоставленных элементов нет
  */
-fun Example3_3() {
+private fun Example3_3() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -281,7 +281,7 @@ fun Example3_3() {
  * Если нам важно отслеживать успех отправки или получения информации, то мы можем использовать обертку ChannelResult
  * Он позволяет получить значение, определить, успешно ли оно отправлено, закрыт ли канал и т.д.
  */
-fun Example4_1() {
+private fun Example4_1() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>()
     scope.launch {
@@ -296,7 +296,7 @@ fun Example4_1() {
  * Пример 4.2
  * Если мы не будем пользоваться этими методами то можем поймать ошибку
  */
-fun Example4_2() {
+private fun Example4_2() {
     val scope = CoroutineScope(Job())
     val channel = Channel<Int>()
     scope.launch {
@@ -309,7 +309,7 @@ fun Example4_2() {
  * Пример 4.3
  * Также есть блокирующий метод, который под капотом использует runBlocking, но как по мне таким лучше не пользоваться
  */
-fun Example4_3() {
+private fun Example4_3() {
     val channel = Channel<Int>()
     val resultSend = channel.trySendBlocking(run {
         println("Very long blocking operation")
@@ -325,7 +325,7 @@ fun Example4_3() {
  * всех остальных и как либо его обрабатывать. Для работы с подобным механизмом существует API Select
  * Если результат пришел, то другие каналы будут отменены
  */
-fun Example5_1() {
+private fun Example5_1() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstProducer = produce<Int> {
@@ -359,12 +359,13 @@ fun Example5_1() {
 /**
  * Пример 5.2
  * Не только каналы, но и другие suspend-билдеры умеют работать вместе с Select
- * @see{<a href="https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.selects/select.html">Подробнее про все типы</a>}
+ *
+ * @see<a href="https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.selects/select.html">Подробнее про все типы</a>
  * При этом для каналов существует несколько видов обработчиков
  * onReceive - отвечает за потребление данных, которые были посланы через этот канал
  * onSend - отвечает за отправление данных через этот канал. Кто первый отправил (и что важно, обработал), тот и молодец
  */
-fun Example5_2() {
+private fun Example5_2() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstActor = actor<Int> {
@@ -397,10 +398,11 @@ fun Example5_2() {
 
 /**
  * Пример 5.3
+ *
  * Однако, может быть ситуация когда при работе со списком каналов один из них закрывается, тогда
  * наш select также прокинет ошибку
  */
-fun Example5_3() {
+private fun Example5_3() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstActor = actor<Int> {
@@ -437,7 +439,7 @@ fun Example5_3() {
  *
  * Что интересно, ошибка имеено что прокидывается, а не распространяется как стандартные буилдеры async/launch
  */
-fun Example5_4() {
+private fun Example5_4() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstActor = actor<Int> {
@@ -478,7 +480,7 @@ fun Example5_4() {
  *
  * Еще один пример работы ошибки, демонстрирует работу не каналов/select, а launch, но показать надо
  */
-fun Example5_5() {
+private fun Example5_5() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstActor = actor<Int> {
@@ -519,7 +521,7 @@ fun Example5_5() {
  *
  * Пример обработки ошибки для onReceive. Аналогично для onSend можем обработать через try/catch
  */
-fun Example5_6() {
+private fun Example5_6() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstProducer = produce<Int> {
@@ -556,7 +558,7 @@ fun Example5_6() {
  * В любом случае для обработки ситуцаии, когда нам необходимо выбрать один приходящий элемент из группы
  * каналов, но при этом один из каналов может закрыться, мы можем вместо onReceive использовать onReceiveCatching
  */
-fun Example6_1() {
+private fun Example6_1() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val firstProducer = produce<Int> {
@@ -591,7 +593,7 @@ fun Example6_1() {
  * Как уже было сказано, помимо каналов с API Select могут работать и другие части, завязанные на корутины
  * Например, async
  */
-fun Example7_1() {
+private fun Example7_1() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val jobs = listOf(
@@ -633,7 +635,7 @@ fun Example7_1() {
  * Также для async существует отдельный метод onJoin, который относится к группе SelectClause0 (то есть мы не получаем значения, только то что было обработано)
  * В ответ этот метод должен вернуть то значение, которое мы хотим видеть в select
  */
-fun Example7_2() {
+private fun Example7_2() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val jobs = listOf(
@@ -676,7 +678,7 @@ fun Example7_2() {
  * При этом при отмене одной из корутин мы не выкинем ошибку, ведь onJoin просто ожидает
  * пока выполнится действие (не обязательно успешно)
  */
-fun Example7_3() {
+private fun Example7_3() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val jobs = listOf(
@@ -719,7 +721,7 @@ fun Example7_3() {
  *
  * Аналогично async onJoin есть и для launch
  */
-fun Example7_4() {
+private fun Example7_4() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val job = launch {
@@ -744,7 +746,7 @@ fun Example7_4() {
  * Так, буилдер onTimeout создает предельное время выполнения для select, если по истечению этого времени
  * ни один из блоков так и не прислал свои данные, то используется результат из onTimeout
  */
-fun Example8_1() {
+private fun Example8_1() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val deferred1 = async {
@@ -775,7 +777,7 @@ fun Example8_1() {
  * Также существует билдер whileSelect, он уже принимает группу событий и работает до тех пор, пока
  * они возвращают true
  */
-fun Example8_2() {
+private fun Example8_2() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val first = produce {
@@ -808,7 +810,7 @@ fun Example8_2() {
  *
  * При этом для этого билдера важно какой ответ приходит первым (то есть если false, то обработка выключается)
  */
-fun Example8_3() {
+private fun Example8_3() {
     val scope = CoroutineScope(Job())
     scope.launch {
         val first = produce {
