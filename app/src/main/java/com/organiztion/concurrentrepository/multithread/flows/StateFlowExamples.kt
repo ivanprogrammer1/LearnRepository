@@ -1,17 +1,66 @@
 package com.organiztion.concurrentrepository.multithread.flows
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 
 /**
  * Пример 1.1
  *
- * S
+ * StateFlow - это подвид SharedFlow, у которого установлены параметры, где буфер равен replay=1.
+ * При этом мы изначально указываем значение, которое будет использоваться при подписке на последовательность
  */
-private fun Example1() {
-    val state = MutableStateFlow(0)
+private fun Example1_1() {
+    val scope = CoroutineScope(Job())
+    val state = MutableStateFlow(0) // Здесь мы указали начальное значение 0, при подписке на последовательность мы его и получим
+
+    scope.launch {
+        state.collect { value ->
+            println("Current value $value")
+        }
+    }
+}
+
+/**
+ * Пример 1.2
+ *
+ * У StateFlow есть несколько конструкторов для работы
+ */
+private fun Example1_2() {
+    val scope = CoroutineScope(Job())
+    val firstFlow = MutableStateFlow(0) // Стандартный конструктор
+
+    // Запуск stateIn происходит в указываемой нами области. Мы ожидаем получение первого значения и дальше можем использовать для отслеживания
+    scope.launch {
+        val secondFlow = flow {
+            while(true) {
+                delay(3000)
+                emit((1..100).random())
+            }
+        }.stateIn(this)
+        secondFlow.collect { value ->
+            println("Second flow $value")
+        }
+    }
+
+    // Конструторк stateIn, принимающий scope-обработчик, когда он должен запуститься и начальное значение
+    val thirdFlow = flow {
+        while(true) {
+            delay(3000)
+            emit(10)
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, 10)
+
 }
 
 fun main() {
-
+    Example1_2();
+    while(true);
 }
