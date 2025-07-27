@@ -5,7 +5,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -19,7 +18,8 @@ import kotlinx.coroutines.launch
  */
 private fun Example1_1() {
     val scope = CoroutineScope(Job())
-    val state = MutableStateFlow(0) // Здесь мы указали начальное значение 0, при подписке на последовательность мы его и получим
+    val state =
+        MutableStateFlow(0) // Здесь мы указали начальное значение 0, при подписке на последовательность мы его и получим
 
     scope.launch {
         state.collect { value ->
@@ -40,7 +40,7 @@ private fun Example1_2() {
     // Запуск stateIn происходит в указываемой нами области. Мы ожидаем получение первого значения и дальше можем использовать для отслеживания
     scope.launch {
         val secondFlow = flow {
-            while(true) {
+            while (true) {
                 delay(3000)
                 emit((1..100).random())
             }
@@ -52,15 +52,55 @@ private fun Example1_2() {
 
     // Конструторк stateIn, принимающий scope-обработчик, когда он должен запуститься и начальное значение
     val thirdFlow = flow {
-        while(true) {
+        while (true) {
             delay(3000)
             emit(10)
         }
     }.stateIn(scope, SharingStarted.Eagerly, 10)
+}
 
+/**
+ * Пример 2.1
+ *
+ * При работе с StateFlow важно понимать что этот класс создавался как отдельный поток для хранения
+ * определенного состояния. Поэтому, если мы обновляем наше состояние через поле value текущим же значением,
+ * то наше значение не поменяется и подписчики не получат изменения
+ */
+private fun Example2_1() {
+    val scope = CoroutineScope(Job())
+    val firstFlow = MutableStateFlow(false)
+
+    scope.launch {
+        launch {
+            // Придет только одно значение
+            firstFlow.collect { value ->
+                println("Current value $value")
+            }
+        }
+
+        delay(1000)
+
+        firstFlow.emit(false) // Посылаем тоже самое значение
+
+        delay(1000)
+
+        println("Try send status: " + firstFlow.tryEmit(false)) // Может быть мы просто не можем послать?
+
+        delay(1000)
+
+        println(
+            "Try compare and set status: " + firstFlow.compareAndSet(
+                false,
+                false
+            )
+        ) // Попробуем сравнить и послать
+
+        delay(1000)
+
+        firstFlow.value = false // Посылаем тоже самое значение, но другим способом
+    }
 }
 
 fun main() {
-    Example1_2();
-    while(true);
+    while (true);
 }
