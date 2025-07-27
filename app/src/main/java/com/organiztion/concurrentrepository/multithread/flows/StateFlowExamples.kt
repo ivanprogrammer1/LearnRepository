@@ -3,8 +3,11 @@ package com.organiztion.concurrentrepository.multithread.flows
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -101,6 +104,57 @@ private fun Example2_1() {
     }
 }
 
+/**
+ * Пример 2.2
+ *
+ * При этом даже если использовать StateFlow вместе с SharedFlow как upstream, то мы не сможем получить
+ * одинаковые значения
+ */
+private fun Example2_2() {
+    val scope = CoroutineScope(Job())
+    val firstFlow = MutableSharedFlow<Boolean>()
+    val firstStateFlow = firstFlow.stateIn(scope, SharingStarted.Eagerly, false)
+
+    scope.launch {
+        launch {
+            firstStateFlow.collect { value ->
+                println("State flow $value")
+            }
+        }
+
+        launch {
+            firstFlow.collect { value ->
+                println("Shared flow $value")
+            }
+        }
+
+        delay(2000)
+
+        firstFlow.emit(false) // Посылаем тоже самое значение
+
+        delay(1000)
+
+        firstFlow.emit(false)
+
+        delay(1000)
+
+        firstFlow.emit(false)
+
+        delay(1000)
+
+        firstFlow.emit(false)
+
+        delay(1000)
+
+        firstFlow.emit(false)
+
+        delay(1000)
+
+        firstFlow.emit(true) // Ловля на живчика
+    }
+}
+
 fun main() {
+    Example2_2()
     while (true);
 }
