@@ -3,6 +3,7 @@ package com.organiztion.concurrentrepository.multithread.flows
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -10,6 +11,7 @@ import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
 import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
@@ -838,7 +840,37 @@ private fun Example8_3() {
     }
 }
 
+/**
+ * Пример 9.1
+ * При работе с каналами мы можем создать кэллбэк invokeOnClose, который будет вызываться при
+ * закрытии канала. В нем может возвращаться Throwable ошибка, описывающая причиину закрытия
+ */
+private fun Example9_1() {
+    val channel = Channel<Int>()
+    channel.invokeOnClose {
+        println("Invoke on close $it")
+    }
+    channel.cancel()
+}
+
+/**
+ * Пример 9.2
+ * Также, если мы используем буилдер produce то мы можем запустить ожидание отмены через метод awaitClose.
+ * Оно работает в связке с invokeOnClose, вызывая именно этот кэллбэк под капотом
+ */
+private fun Example9_2() {
+    val scope = CoroutineScope(Job())
+    scope.launch {
+        val produceChannel = produce<Int> {
+            awaitClose {
+                println("Await close")
+            }
+        }
+        produceChannel.cancel()
+    }
+}
+
 fun main() {
-    Example8_3()
+    Example9_2()
     while (true);
 }
